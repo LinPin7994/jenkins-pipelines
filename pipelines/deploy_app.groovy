@@ -37,6 +37,7 @@ node("docker") {
     def GERRIT_URL = env.GERRIT_URL
     def KUBECONFIG = env.KUBECONFIG
     def IMAGE_VERSION = env.IMAGE_VERSION
+    def CUSTOM_PARAMETERS = env.CUSTOM_PARAMETERS
 
     stage("Pull repository") {
         withCredentials([usernamePassword(credentialsId: 'jenkinsHTTP', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
@@ -53,16 +54,24 @@ node("docker") {
         createNamespace("${env.NAMESPACE}")
     }
     stage("Deploy application") {
-        sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP_VERSION=${env.IMAGE_VERSION} > helm_manifest.yaml")
+        if (CUSTOM_PARAMETERS.length() > 0) {
+            try {
+                sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP_VERSION=${env.IMAGE_VERSION},${env.CUSTOM_PARAMETERS} > helm_manifest.yaml")
+            } catch (Exception e) {
+                println("[JENKINS][DEBUG] generate helm template failed. Reason - " + e + ". Check CUSTOM_PARAMETERS syntax.")
+            }
+        } else {
+            sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP_VERSION=${env.IMAGE_VERSION} > helm_manifest.yaml")
+        }
         archiveArtifacts artifacts: 'helm_manifest.yaml', fingerprint: true
         applyManifest("helm_manifest.yaml")
         sleep(10)
     }
-    stage("Labels namespace") {
-        sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} label --overwrite ns ${env.NAMESPACE} ${env.GERRIT_PROJECT_NAME}=${env.IMAGE_VERSION}")
-    }
     stage("Print logs") {
         deploingPod = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod |grep ${env.GERRIT_PROJECT_NAME}|awk '{print \$1}'", returnStdout: true).trim()
         checkPodStatus("${deploingPod}")
+    }
+    stage("Label namespace") {
+        sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} label --overwrite ns ${env.NAMESPACE} ${env.GERRIT_PROJECT_NAME}=${env.IMAGE_VERSION}")
     }
 }
