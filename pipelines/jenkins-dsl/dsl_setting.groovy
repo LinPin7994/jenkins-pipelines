@@ -45,13 +45,13 @@ pipelineJob('grafana/grafana-deploy') {
             groovyScript {
                 script('''def list =[]
 def project = "${GERRIT_PROJECT_NAME}"
-def nexusUrl = "${NEXUS_URL}"
-def cmd = new ProcessBuilder('sh','-c',"curl -sSL -X GET  http://${nexusUrl}/service/rest/v1/search/assets | grep docker-external|grep ${project}|cut -d/ -f5|grep -v docker|tr -d '\\",'").redirectErrorStream(false).start().text
+def path = "/var/jenkins_home/workspace/update-devops-version/devops-version"
+def cmd = new ProcessBuilder('sh','-c',"cat ${path}/${project}.txt").redirectErrorStream(false).start().text
 list = cmd.readLines()
 return list''')            
                 fallbackScript(''' return['error'] ''')
             }
-            referencedParameter('GERRIT_PROJECT_NAME, NEXUS_URL')
+            referencedParameter('GERRIT_PROJECT_NAME')
         }
 
     }
@@ -144,13 +144,13 @@ pipelineJob('prometheus/prometheus-deploy') {
             groovyScript {
                 script('''def list =[]
 def project = "${GERRIT_PROJECT_NAME}"
-def nexusUrl = "${NEXUS_URL}"
-def cmd = new ProcessBuilder('sh','-c',"curl -sSL -X GET  http://${nexusUrl}/service/rest/v1/search/assets | grep docker-external|grep ${project}|cut -d/ -f5|grep -v docker|tr -d '\\",'").redirectErrorStream(false).start().text
+def path = "/var/jenkins_home/workspace/update-devops-version/devops-version"
+def cmd = new ProcessBuilder('sh','-c',"cat ${path}/${project}.txt").redirectErrorStream(false).start().text
 list = cmd.readLines()
 return list''')            
                 fallbackScript(''' return['error'] ''')
             }
-            referencedParameter('GERRIT_PROJECT_NAME, NEXUS_URL')
+            referencedParameter('GERRIT_PROJECT_NAME')
         }
 
     }
@@ -210,6 +210,62 @@ pipelineJob('prometheus/prometheus-remove') {
         }
     }
 }
+pipelineJob('prometheus/node-exporter-deploy') {
+    description("node-exporter deploy")
+    logRotator {
+        numToKeep(numberOfBuildsToKeep)
+        daysToKeep(daysToKeepBuilds)
+    }
+    parameters {
+        wHideParameterDefinition {
+            name('GERRIT_PROJECT_NAME')
+            defaultValue("node-exporter")
+            description('gerrit project name')
+        }
+        wHideParameterDefinition {
+            name('GERRIT_URL')
+            defaultValue(gerritUrl)
+            description('gerrit internal url')
+        }
+        wHideParameterDefinition {
+            name('KUBECONFIG')
+            defaultValue(kubeconfig)
+            description('path to kubeconfig file')
+        }
+        stringParam("NAMESPACE", "default", "")
+        stringParam("CUSTOM_PARAMETERS", "", "custom parameters for replace helm template value. Example - key=value,key=value")
+        activeChoiceReactiveParam('IMAGE_VERSION') {
+            description('Exists image version')
+            choiceType('SINGLE_SELECT')
+            groovyScript {
+                script('''def list =[]
+def project = "${GERRIT_PROJECT_NAME}"
+def path = "/var/jenkins_home/workspace/update-devops-version/devops-version"
+def cmd = new ProcessBuilder('sh','-c',"cat ${path}/${project}.txt").redirectErrorStream(false).start().text
+list = cmd.readLines()
+return list''')            
+                fallbackScript(''' return['error'] ''')
+            }
+            referencedParameter('GERRIT_PROJECT_NAME')
+        }
+
+    }
+       
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url(repositoryUrl)
+                        credentials(repositoryCreds)
+                    }
+                    branches("master")
+                    scriptPath("${pipelinePath}/deploy_app.groovy")
+                }
+            }
+        }
+    }
+}
 folder('keycloak') {
     description('keycloak pipelines')
 }
@@ -243,13 +299,13 @@ pipelineJob('keycloak/keycloak-deploy') {
             groovyScript {
                 script('''def list =[]
 def project = "${GERRIT_PROJECT_NAME}"
-def nexusUrl = "${NEXUS_URL}"
-def cmd = new ProcessBuilder('sh','-c',"curl -sSL -X GET  http://${nexusUrl}/service/rest/v1/search/assets | grep docker-external|grep ${project}|cut -d/ -f5|grep -v docker|tr -d '\\",'").redirectErrorStream(false).start().text
+def path = "/var/jenkins_home/workspace/update-devops-version/devops-version"
+def cmd = new ProcessBuilder('sh','-c',"cat ${path}/${project}.txt").redirectErrorStream(false).start().text
 list = cmd.readLines()
 return list''')            
                 fallbackScript(''' return['error'] ''')
             }
-            referencedParameter('GERRIT_PROJECT_NAME, NEXUS_URL')
+            referencedParameter('GERRIT_PROJECT_NAME')
         }
 
     }
@@ -342,13 +398,13 @@ pipelineJob('gerrit/gerrit-deploy') {
             groovyScript {
                 script('''def list =[]
 def project = "${GERRIT_PROJECT_NAME}"
-def nexusUrl = "${NEXUS_URL}"
-def cmd = new ProcessBuilder('sh','-c',"curl -sSL -X GET  http://${nexusUrl}/service/rest/v1/search/assets | grep docker-external|grep ${project}|cut -d/ -f5|grep -v docker|tr -d '\\",'").redirectErrorStream(false).start().text
+def path = "/var/jenkins_home/workspace/update-devops-version/devops-version"
+def cmd = new ProcessBuilder('sh','-c',"cat ${path}/${project}.txt").redirectErrorStream(false).start().text
 list = cmd.readLines()
 return list''')            
                 fallbackScript(''' return['error'] ''')
             }
-            referencedParameter('GERRIT_PROJECT_NAME, NEXUS_URL')
+            referencedParameter('GERRIT_PROJECT_NAME')
         }
 
     }
@@ -441,13 +497,13 @@ pipelineJob('nexus/nexus-deploy') {
             groovyScript {
                 script('''def list =[]
 def project = "${GERRIT_PROJECT_NAME}"
-def nexusUrl = "${NEXUS_URL}"
-def cmd = new ProcessBuilder('sh','-c',"curl -sSL -X GET  http://${nexusUrl}/service/rest/v1/search/assets | grep docker-external|grep ${project}|cut -d/ -f5|grep -v docker|tr -d '\\",'").redirectErrorStream(false).start().text
+def path = "/var/jenkins_home/workspace/update-devops-version/devops-version"
+def cmd = new ProcessBuilder('sh','-c',"cat ${path}/${project}.txt").redirectErrorStream(false).start().text
 list = cmd.readLines()
 return list''')            
                 fallbackScript(''' return['error'] ''')
             }
-            referencedParameter('GERRIT_PROJECT_NAME, NEXUS_URL')
+            referencedParameter('GERRIT_PROJECT_NAME')
         }
 
     }
@@ -570,6 +626,11 @@ pipelineJob("update-devops-version") {
             name('GERRIT_URL')
             defaultValue(gerritUrl)
             description('gerrit internal url')
+        }
+        wHideParameterDefinition {
+            name('NEXUS_URL')
+            defaultValue(nexusUrl)
+            description('nexus internal url')
         }
     }
     triggers {

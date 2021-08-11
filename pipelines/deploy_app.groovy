@@ -10,6 +10,14 @@ def applyManifest(helmManifest) {
     sh(script: "kubectl -n ${env.NAMESPACE} --kubeconfig ${env.KUBECONFIG} apply -f ${helmManifest}")
 }
 
+def createHelmTemplate() {
+    sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP_VERSION=${env.IMAGE_VERSION} > helm_manifest.yaml")
+}
+
+def createHelmTemplateWithParameters() {
+    sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP_VERSION=${env.IMAGE_VERSION},${env.CUSTOM_PARAMETERS} > helm_manifest.yaml")
+}
+
 def checkPodStatus(podName) {
     def podStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod ${podName} --no-headers|awk '{print \$3}'", returnStdout: true).trim()
     timeout(time: 5, unit: 'MINUTES') {
@@ -29,6 +37,16 @@ def checkPodStatus(podName) {
     if (!(podStatus in ["Completed", "Running"])) {
         currentBuild.result = "FAILURE"
     }
+}
+
+def prometheusPreDeploy() {
+    def reloaderUrl = "https://raw.githubusercontent.com/stakater/Reloader/master/deployments/kubernetes/reloader.yaml"
+    def kubeStateMetricsRepo = "https://github.com/kubernetes/kube-state-metrics.git"
+    println("[JENKINS][DEBUG] project = " + GERRIT_PROJECT_NAME + ". Will be use extend stage for prometheus")
+    sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} apply -f ${reloaderUrl}", returnStdout: true)
+    println("[JENLINS][DEBUG] apply kube-state-metrics")
+    sh(script: "git clone ${kubeStateMetricsRepo}", returnStdout: true)
+    sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} apply -f kube-state-metrics/examples/standard/", returnStdout: true)
 }
 
 node("docker") {
@@ -55,13 +73,15 @@ node("docker") {
     }
     stage("Deploy application") {
         if (CUSTOM_PARAMETERS.length() > 0) {
-            try {
-                sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP_VERSION=${env.IMAGE_VERSION},${env.CUSTOM_PARAMETERS} > helm_manifest.yaml")
-            } catch (Exception e) {
-                println("[JENKINS][DEBUG] generate helm template failed. Reason - " + e + ". Check CUSTOM_PARAMETERS syntax.")
-            }
+            createHelmTemplateWithParameters()
+        } else if (CUSTOM_PARAMETERS.length() > 0 && GERRIT_PROJECT_NAME == 'prometheus') {
+            prometheusPreDeploy()
+            createHelmTemplateWithParameters()
+        } else if (GERRIT_PROJECT_NAME == 'prometheus') {
+            prometheusPreDeploy()
+            createHelmTemplate()
         } else {
-            sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP_VERSION=${env.IMAGE_VERSION} > helm_manifest.yaml")
+            createHelmTemplate()
         }
         archiveArtifacts artifacts: 'helm_manifest.yaml', fingerprint: true
         applyManifest("helm_manifest.yaml")

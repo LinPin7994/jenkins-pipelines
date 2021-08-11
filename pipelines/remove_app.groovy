@@ -6,7 +6,7 @@ def getComponents(pv, pvc, svc, deploy) {
     objects['pv'] = "${pv}"
     while (pv.length() > 0 && pvc.length() > 0 && svc.length() > 0 && deploy.length() > 0) {
         (objects).each {
-            println "[JENKINS][DEBUG] object: ${it.key} : ${it.value} mark deleted"
+            println "[JENKINS][DEBUG] object ${it.key} : ${it.value} mark deleted"
             if (it.key == "pv") {
                 try {
                     sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} delete ${it.key} ${it.value}")
