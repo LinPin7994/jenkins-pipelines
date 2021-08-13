@@ -20,23 +20,22 @@ def createHelmTemplateWithParameters() {
 
 def checkPodStatus(podName) {
     def podStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod ${podName} --no-headers|awk '{print \$3}'", returnStdout: true).trim()
-    timeout(time: 5, unit: 'MINUTES') {
-        for (i = 0; i < 30; i++) {
-            if (podStatus in ["ContainerCreating", "Pending"]) {
+    def podActiveStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod ${podName} -o 'jsonpath={..status.conditions[?(@.type==\"Ready\")].status}'", returnStdout: true).trim()
+    try {
+        timeout(time: 5, unit: 'MINUTES') {
+            while (podActiveStatus != 'True') {
                 println("[JENKINS][DEBUG] pod \"${podName}\" current status: ${podStatus}")
                 sleep(10)
                 podStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod ${podName} --no-headers|awk '{print \$3}'", returnStdout: true).trim()
-            } else {
-                i = 30
+                podActiveStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod ${podName} -o 'jsonpath={..status.conditions[?(@.type==\"Ready\")].status}'", returnStdout: true).trim()
             }
         }
+    } catch (Throwable e) {
+        currentBuild.result = "FAILURE"
     }
     println("[JENKINS][DEBUG] Pod \"${podName}\" current status: ${podStatus}")
     logs = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} logs ${podName}", returnStdout: true)
     println("[JENKINS][DEBUG] Pod \"${podName}\" logs:\n${logs}")
-    if (!(podStatus in ["Completed", "Running"])) {
-        currentBuild.result = "FAILURE"
-    }
 }
 
 def prometheusPreDeploy() {
@@ -45,7 +44,10 @@ def prometheusPreDeploy() {
     println("[JENKINS][DEBUG] project = " + GERRIT_PROJECT_NAME + ". Will be use extend stage for prometheus")
     sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} apply -f ${reloaderUrl}", returnStdout: true)
     println("[JENLINS][DEBUG] apply kube-state-metrics")
-    sh(script: "git clone ${kubeStateMetricsRepo}", returnStdout: true)
+    sh """
+       rm -rf kube-state-metrics
+       git clone ${kubeStateMetricsRepo}
+    """
     sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} apply -f kube-state-metrics/examples/standard/", returnStdout: true)
 }
 
@@ -72,7 +74,7 @@ node("docker") {
         createNamespace("${env.NAMESPACE}")
     }
     stage("Deploy application") {
-        if (CUSTOM_PARAMETERS.length() > 0) {
+        if (CUSTOM_PARAMETERS.length() > 0 && GERRIT_PROJECT_NAME != 'prometheus') {
             createHelmTemplateWithParameters()
         } else if (CUSTOM_PARAMETERS.length() > 0 && GERRIT_PROJECT_NAME == 'prometheus') {
             prometheusPreDeploy()

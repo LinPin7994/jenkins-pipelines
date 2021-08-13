@@ -1,10 +1,11 @@
-def getComponents(pv, pvc, svc, deploy) {
+def getComponents(pv, pvc, svc, deploy, cm) {
     objects = [:]
     objects['deploy'] = "${deploy}"
     objects['svc'] = "${svc}"
     objects['pvc'] = "${pvc}"
     objects['pv'] = "${pv}"
-    while (pv.length() > 0 && pvc.length() > 0 && svc.length() > 0 && deploy.length() > 0) {
+    objects['configmap'] = "${cm}"
+    while (pv.length() > 0 || pvc.length() > 0 || svc.length() > 0 || deploy.length() > 0 || cm.length() > 0) {
         (objects).each {
             println "[JENKINS][DEBUG] object ${it.key} : ${it.value} mark deleted"
             if (it.key == "pv") {
@@ -25,7 +26,8 @@ def getComponents(pv, pvc, svc, deploy) {
         pvc = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pvc|grep ${env.GERRIT_PROJECT_NAME}|awk '{print \$1}'", returnStdout: true).trim()
         svc = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get svc|grep ${env.GERRIT_PROJECT_NAME}|awk '{print \$1}'", returnStdout: true).trim()
         deploy = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get deploy|grep ${env.GERRIT_PROJECT_NAME}|awk '{print \$1}'", returnStdout: true).trim()
-        if (pv.length() == 0 && pvc.length() == 0 && svc.length() == 0 && deploy.length() == 0) {
+        cm = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get cm|grep ${env.GERRIT_PROJECT_NAME}|awk '{print \$1}'", returnStdout: true).trim()
+        if (pv.length() == 0 && pvc.length() == 0 && svc.length() == 0 && deploy.length() == 0 && cm.length() == 0) {
             println("[JENKINS][DEBUG] all resources deleted" )
         }
     }
@@ -41,6 +43,7 @@ node("docker") {
         def persistentVolumeClaim = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pvc|grep ${env.GERRIT_PROJECT_NAME}|awk '{print \$1}'", returnStdout: true).trim()
         def service = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get svc|grep ${env.GERRIT_PROJECT_NAME}|awk '{print \$1}'", returnStdout: true).trim()
         def deployment = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get deploy|grep ${env.GERRIT_PROJECT_NAME}|awk '{print \$1}'", returnStdout: true).trim()
-        getComponents("${persistentVolume}", "${persistentVolumeClaim}", "${service}", "${deployment}")
+        def configmap = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get cm|grep ${env.GERRIT_PROJECT_NAME}|awk '{print \$1}'", returnStdout: true).trim()
+        getComponents("${persistentVolume}", "${persistentVolumeClaim}", "${service}", "${deployment}", "${configmap}")
     }
 }    
