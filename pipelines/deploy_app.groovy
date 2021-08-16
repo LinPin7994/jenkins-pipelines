@@ -5,39 +5,29 @@ def createNamespace(namespace) {
         println("[JENKINS][DEBUG] namespace " + namespace + " exist")
     }
 }
-
 def applyManifest(helmManifest) {
     sh(script: "kubectl -n ${env.NAMESPACE} --kubeconfig ${env.KUBECONFIG} apply -f ${helmManifest}")
 }
-
 def createHelmTemplate() {
     sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP_VERSION=${env.IMAGE_VERSION} > helm_manifest.yaml")
 }
-
 def createHelmTemplateWithParameters() {
     sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP_VERSION=${env.IMAGE_VERSION},${env.CUSTOM_PARAMETERS} > helm_manifest.yaml")
 }
-
 def checkPodStatus(podName) {
-    def podStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod ${podName} --no-headers|awk '{print \$3}'", returnStdout: true).trim()
-    def podActiveStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod ${podName} -o 'jsonpath={..status.conditions[?(@.type==\"Ready\")].status}'", returnStdout: true).trim()
-    try {
-        timeout(time: 5, unit: 'MINUTES') {
-            while (podActiveStatus != 'True') {
-                println("[JENKINS][DEBUG] pod \"${podName}\" current status: ${podStatus}")
-                sleep(10)
-                podStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod ${podName} --no-headers|awk '{print \$3}'", returnStdout: true).trim()
-                podActiveStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod ${podName} -o 'jsonpath={..status.conditions[?(@.type==\"Ready\")].status}'", returnStdout: true).trim()
-            }
-        }
-    } catch (Throwable e) {
-        currentBuild.result = "FAILURE"
-    }
-    println("[JENKINS][DEBUG] Pod \"${podName}\" current status: ${podStatus}")
+    podStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod ${podName} --no-headers|awk '{print \$3}'", returnStdout: true).trim()
+    println("[JENKINS][DEBUG] pod \"${podName}\" current status: ${podStatus}")
     logs = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} logs ${podName}", returnStdout: true)
     println("[JENKINS][DEBUG] Pod \"${podName}\" logs:\n${logs}")
 }
-
+def checkRolloutStatus(deployment) {
+    rolloutStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} rollout status deployment/${deployment} -n ${env.NAMESPACE}", returnStatus: true)
+    return rolloutStatus
+}
+def printLogs() {
+    deploingPod = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod |grep ${env.GERRIT_PROJECT_NAME}|awk '{print \$1}'", returnStdout: true).trim()
+    checkPodStatus("${deploingPod}")
+}
 def prometheusPreDeploy() {
     def reloaderUrl = "https://raw.githubusercontent.com/stakater/Reloader/master/deployments/kubernetes/reloader.yaml"
     def kubeStateMetricsRepo = "https://github.com/kubernetes/kube-state-metrics.git"
@@ -50,7 +40,6 @@ def prometheusPreDeploy() {
     """
     sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} apply -f kube-state-metrics/examples/standard/", returnStdout: true)
 }
-
 node("docker") {
     def GERRIT_PROJECT_NAME = env.GERRIT_PROJECT_NAME
     def NAMESPACE = env.NAMESPACE
@@ -73,6 +62,9 @@ node("docker") {
     stage("Create namespace") {
         createNamespace("${env.NAMESPACE}")
     }
+    stage("Create docker-registry secret") {
+        build job: 'create-registry-secret', parameters: [string(name: 'NAMESPACE', value: env.NAMESPACE)]
+    }
     stage("Deploy application") {
         if (CUSTOM_PARAMETERS.length() > 0 && GERRIT_PROJECT_NAME != 'prometheus') {
             createHelmTemplateWithParameters()
@@ -88,10 +80,14 @@ node("docker") {
         archiveArtifacts artifacts: 'helm_manifest.yaml', fingerprint: true
         applyManifest("helm_manifest.yaml")
         sleep(10)
-    }
-    stage("Print logs") {
-        deploingPod = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod |grep ${env.GERRIT_PROJECT_NAME}|awk '{print \$1}'", returnStdout: true).trim()
-        checkPodStatus("${deploingPod}")
+        currentDeployment = "${env.GERRIT_PROJECT_NAME}"
+        deploymentRolloutStatus = checkRolloutStatus("${currentDeployment}")
+        if (deploymentRolloutStatus.equals(0)) {
+            printLogs()
+        } else {
+            printLogs()
+            currentBuild.result = "FAILURE"
+        }
     }
     stage("Label namespace") {
         sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} label --overwrite ns ${env.NAMESPACE} ${env.GERRIT_PROJECT_NAME}=${env.IMAGE_VERSION}")

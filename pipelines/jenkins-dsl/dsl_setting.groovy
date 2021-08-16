@@ -667,8 +667,6 @@ pipelineJob("create-registry-secret") {
         stringParam("SECRET_NAME", "docker-registry", "")
         stringParam("DOCKER_SERVER", "192.168.0.56", "")
         stringParam("DOCKER_SERVER_PORT", "32100", "")
-        stringParam("DOCKER_USER", "jenkins", "")
-        stringParam("DOCKER_PASSWORD", "", "")
         stringParam("DOCKER_EMAIL", "jenkins@example.com", "")
     }
     definition {
@@ -681,6 +679,105 @@ pipelineJob("create-registry-secret") {
                     }
                     branches("master")
                     scriptPath("${pipelinePath}/create-registry-secret.groovy")
+                }
+            }
+        }
+    }
+}
+folder('sonarqube') {
+    description('sonarqube pipelines')
+}
+pipelineJob('sonarqube/sonarqube-deploy') {
+    description("deploy sonarqube")
+    logRotator {
+        numToKeep(numberOfBuildsToKeep)
+        daysToKeep(daysToKeepBuilds)
+    }
+    parameters {
+        wHideParameterDefinition {
+            name('GERRIT_PROJECT_NAME')
+            defaultValue("sonarqube")
+            description('gerrit project name')
+        }
+        wHideParameterDefinition {
+            name('GERRIT_URL')
+            defaultValue(gerritUrl)
+            description('gerrit internal url')
+        }
+        wHideParameterDefinition {
+            name('KUBECONFIG')
+            defaultValue(kubeconfig)
+            description('path to kubeconfig file')
+        }
+        stringParam("NAMESPACE", "default", "")
+        stringParam("CUSTOM_PARAMETERS", "", "custom parameters for replace helm template value. Example - key=value,key=value")
+        activeChoiceReactiveParam('IMAGE_VERSION') {
+            description('Exists image version')
+            choiceType('SINGLE_SELECT')
+            groovyScript {
+                script('''def list =[]
+def project = "${GERRIT_PROJECT_NAME}"
+def path = "/var/jenkins_home/workspace/update-devops-version/devops-version"
+def cmd = new ProcessBuilder('sh','-c',"cat ${path}/${project}.txt").redirectErrorStream(false).start().text
+list = cmd.readLines()
+return list''')            
+                fallbackScript(''' return['error'] ''')
+            }
+            referencedParameter('GERRIT_PROJECT_NAME')
+        }
+
+    }
+       
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url(repositoryUrl)
+                        credentials(repositoryCreds)
+                    }
+                    branches("master")
+                    scriptPath("${pipelinePath}/deploy_app.groovy")
+                }
+            }
+        }
+    }
+}
+pipelineJob('sonarqube/sonarqube-remove') {
+    description("Удаление компонента")
+    logRotator {
+        numToKeep(numberOfBuildsToKeep)
+        daysToKeep(daysToKeepBuilds)
+    }
+    parameters {
+        wHideParameterDefinition {
+            name('GERRIT_PROJECT_NAME')
+            defaultValue("sonarqube")
+            description('gerrit project name')
+        }
+        wHideParameterDefinition {
+            name('GERRIT_URL')
+            defaultValue(gerritUrl)
+            description('gerrit internal url')
+        }
+        wHideParameterDefinition {
+            name('KUBECONFIG')
+            defaultValue(kubeconfig)
+            description('path to kubeconfig file')
+        }
+        stringParam("NAMESPACE", "default", "")
+    }
+       
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url(repositoryUrl)
+                        credentials(repositoryCreds)
+                    }
+                    branches("master")
+                    scriptPath("${pipelinePath}/remove_app.groovy")
                 }
             }
         }
