@@ -6,7 +6,7 @@ def repositoryCreds = 'jenkinsHTTP'
 def kubeconfig = '/srv/admin.conf'
 def gerritUrl = '192.168.0.56:32003'
 def nexusUrl = '192.168.0.56:32000'
-
+def sonarUrl = 'http://192.168.0.54:32012/'
 folder('grafana') {
     description('Grafana pipelines')
 }
@@ -66,6 +66,58 @@ return list''')
                     }
                     branches("master")
                     scriptPath("${pipelinePath}/deploy_app.groovy")
+                }
+            }
+        }
+    }
+}
+pipelineJob('grafana/gerrit-precommit-grafana') {
+    description("Перкомит проверка кода")
+    logRotator {
+        numToKeep(numberOfBuildsToKeep)
+        daysToKeep(daysToKeepBuilds)
+    }
+    parameters {
+        wHideParameterDefinition {
+            name('GERRIT_PROJECT_NAME')
+            defaultValue("grafana")
+            description('gerrit project name')
+        }
+        wHideParameterDefinition {
+            name('GERRIT_URL')
+            defaultValue(gerritUrl)
+            description('gerrit internal url')
+        }
+        wHideParameterDefinition {
+            name('KUBECONFIG')
+            defaultValue(kubeconfig)
+            description('path to kubeconfig file')
+        }
+        wHideParameterDefinition {
+            name('SONAR_URL')
+            defaultValue(sonarUrl)
+            description('sonar url')
+        }
+        triggers {
+            gerrit {
+                events {
+                    patchsetCreated()
+                }
+                project('plain:grafana', ['ant:**'])
+            }
+        }
+    }
+       
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url(repositoryUrl)
+                        credentials(repositoryCreds)
+                    }
+                    branches("master")
+                    scriptPath("${pipelinePath}/gerrit-precommit.groovy")
                 }
             }
         }
@@ -205,6 +257,58 @@ pipelineJob('prometheus/prometheus-remove') {
                     }
                     branches("master")
                     scriptPath("${pipelinePath}/remove_app.groovy")
+                }
+            }
+        }
+    }
+}
+pipelineJob('prometheus/gerrit-precommit-prometheus') {
+    description("Перкомит проверка кода")
+    logRotator {
+        numToKeep(numberOfBuildsToKeep)
+        daysToKeep(daysToKeepBuilds)
+    }
+    parameters {
+        wHideParameterDefinition {
+            name('GERRIT_PROJECT_NAME')
+            defaultValue("prometheus")
+            description('gerrit project name')
+        }
+        wHideParameterDefinition {
+            name('GERRIT_URL')
+            defaultValue(gerritUrl)
+            description('gerrit internal url')
+        }
+        wHideParameterDefinition {
+            name('KUBECONFIG')
+            defaultValue(kubeconfig)
+            description('path to kubeconfig file')
+        }
+        wHideParameterDefinition {
+            name('SONAR_URL')
+            defaultValue(sonarUrl)
+            description('sonar url')
+        }
+        triggers {
+            gerrit {
+                events {
+                    patchsetCreated()
+                }
+                project('plain:prometheus', ['ant:**'])
+            }
+        }
+    }
+       
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url(repositoryUrl)
+                        credentials(repositoryCreds)
+                    }
+                    branches("master")
+                    scriptPath("${pipelinePath}/gerrit-precommit.groovy")
                 }
             }
         }
@@ -365,6 +469,58 @@ pipelineJob('keycloak/keycloak-remove') {
         }
     }
 }
+pipelineJob('keycloak/gerrit-precommit-keycloak') {
+    description("Перкомит проверка кода")
+    logRotator {
+        numToKeep(numberOfBuildsToKeep)
+        daysToKeep(daysToKeepBuilds)
+    }
+    parameters {
+        wHideParameterDefinition {
+            name('GERRIT_PROJECT_NAME')
+            defaultValue("keycloak")
+            description('gerrit project name')
+        }
+        wHideParameterDefinition {
+            name('GERRIT_URL')
+            defaultValue(gerritUrl)
+            description('gerrit internal url')
+        }
+        wHideParameterDefinition {
+            name('KUBECONFIG')
+            defaultValue(kubeconfig)
+            description('path to kubeconfig file')
+        }
+        wHideParameterDefinition {
+            name('SONAR_URL')
+            defaultValue(sonarUrl)
+            description('sonar url')
+        }
+        triggers {
+            gerrit {
+                events {
+                    patchsetCreated()
+                }
+                project('plain:keycloak', ['ant:**'])
+            }
+        }
+    }
+       
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url(repositoryUrl)
+                        credentials(repositoryCreds)
+                    }
+                    branches("master")
+                    scriptPath("${pipelinePath}/gerrit-precommit.groovy")
+                }
+            }
+        }
+    }
+}
 folder('gerrit') {
     description('gerrit pipelines')
 }
@@ -424,7 +580,7 @@ return list''')
         }
     }
 }
-pipelineJob('gerrit/keycloak-remove') {
+pipelineJob('gerrit/gerrit-remove') {
     description("Удаление компонента")
     logRotator {
         numToKeep(numberOfBuildsToKeep)
@@ -459,6 +615,58 @@ pipelineJob('gerrit/keycloak-remove') {
                     }
                     branches("master")
                     scriptPath("${pipelinePath}/remove_app.groovy")
+                }
+            }
+        }
+    }
+}
+pipelineJob('gerrit/gerrit-precommit-gerrit') {
+    description("Перкомит проверка кода")
+    logRotator {
+        numToKeep(numberOfBuildsToKeep)
+        daysToKeep(daysToKeepBuilds)
+    }
+    parameters {
+        wHideParameterDefinition {
+            name('GERRIT_PROJECT_NAME')
+            defaultValue("gerrit")
+            description('gerrit project name')
+        }
+        wHideParameterDefinition {
+            name('GERRIT_URL')
+            defaultValue(gerritUrl)
+            description('gerrit internal url')
+        }
+        wHideParameterDefinition {
+            name('KUBECONFIG')
+            defaultValue(kubeconfig)
+            description('path to kubeconfig file')
+        }
+        wHideParameterDefinition {
+            name('SONAR_URL')
+            defaultValue(sonarUrl)
+            description('sonar url')
+        }
+        triggers {
+            gerrit {
+                events {
+                    patchsetCreated()
+                }
+                project('plain:gerrit', ['ant:**'])
+            }
+        }
+    }
+       
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url(repositoryUrl)
+                        credentials(repositoryCreds)
+                    }
+                    branches("master")
+                    scriptPath("${pipelinePath}/gerrit-precommit.groovy")
                 }
             }
         }
@@ -558,6 +766,58 @@ pipelineJob('nexus/nexus-remove') {
                     }
                     branches("master")
                     scriptPath("${pipelinePath}/remove_app.groovy")
+                }
+            }
+        }
+    }
+}
+pipelineJob('nexus/gerrit-precommit-nexus') {
+    description("Перкомит проверка кода")
+    logRotator {
+        numToKeep(numberOfBuildsToKeep)
+        daysToKeep(daysToKeepBuilds)
+    }
+    parameters {
+        wHideParameterDefinition {
+            name('GERRIT_PROJECT_NAME')
+            defaultValue("nexus")
+            description('gerrit project name')
+        }
+        wHideParameterDefinition {
+            name('GERRIT_URL')
+            defaultValue(gerritUrl)
+            description('gerrit internal url')
+        }
+        wHideParameterDefinition {
+            name('KUBECONFIG')
+            defaultValue(kubeconfig)
+            description('path to kubeconfig file')
+        }
+        wHideParameterDefinition {
+            name('SONAR_URL')
+            defaultValue(sonarUrl)
+            description('sonar url')
+        }
+        triggers {
+            gerrit {
+                events {
+                    patchsetCreated()
+                }
+                project('plain:nexus', ['ant:**'])
+            }
+        }
+    }
+       
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url(repositoryUrl)
+                        credentials(repositoryCreds)
+                    }
+                    branches("master")
+                    scriptPath("${pipelinePath}/gerrit-precommit.groovy")
                 }
             }
         }
@@ -778,6 +1038,110 @@ pipelineJob('sonarqube/sonarqube-remove') {
                     }
                     branches("master")
                     scriptPath("${pipelinePath}/remove_app.groovy")
+                }
+            }
+        }
+    }
+}
+pipelineJob('sonarqube/gerrit-precommit-sonarqube') {
+    description("Перкомит проверка кода")
+    logRotator {
+        numToKeep(numberOfBuildsToKeep)
+        daysToKeep(daysToKeepBuilds)
+    }
+    parameters {
+        wHideParameterDefinition {
+            name('GERRIT_PROJECT_NAME')
+            defaultValue("sonarqube")
+            description('gerrit project name')
+        }
+        wHideParameterDefinition {
+            name('GERRIT_URL')
+            defaultValue(gerritUrl)
+            description('gerrit internal url')
+        }
+        wHideParameterDefinition {
+            name('KUBECONFIG')
+            defaultValue(kubeconfig)
+            description('path to kubeconfig file')
+        }
+        wHideParameterDefinition {
+            name('SONAR_URL')
+            defaultValue(sonarUrl)
+            description('sonar url')
+        }
+        triggers {
+            gerrit {
+                events {
+                    patchsetCreated()
+                }
+                project('plain:sonarqube', ['ant:**'])
+            }
+        }
+    }
+       
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url(repositoryUrl)
+                        credentials(repositoryCreds)
+                    }
+                    branches("master")
+                    scriptPath("${pipelinePath}/gerrit-precommit.groovy")
+                }
+            }
+        }
+    }
+}
+pipelineJob('gerrit-precommit-edp') {
+    description("Перкомит проверка кода")
+    logRotator {
+        numToKeep(numberOfBuildsToKeep)
+        daysToKeep(daysToKeepBuilds)
+    }
+    parameters {
+        wHideParameterDefinition {
+            name('GERRIT_PROJECT_NAME')
+            defaultValue("edp")
+            description('gerrit project name')
+        }
+        wHideParameterDefinition {
+            name('GERRIT_URL')
+            defaultValue(gerritUrl)
+            description('gerrit internal url')
+        }
+        wHideParameterDefinition {
+            name('KUBECONFIG')
+            defaultValue(kubeconfig)
+            description('path to kubeconfig file')
+        }
+        wHideParameterDefinition {
+            name('SONAR_URL')
+            defaultValue(sonarUrl)
+            description('sonar url')
+        }
+        triggers {
+            gerrit {
+                events {
+                    patchsetCreated()
+                }
+                project('plain:edp', ['ant:**'])
+            }
+        }
+    }
+       
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url(repositoryUrl)
+                        credentials(repositoryCreds)
+                    }
+                    branches("master")
+                    scriptPath("${pipelinePath}/gerrit-precommit.groovy")
                 }
             }
         }

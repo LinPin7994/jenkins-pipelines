@@ -9,10 +9,10 @@ def applyManifest(helmManifest) {
     sh(script: "kubectl -n ${env.NAMESPACE} --kubeconfig ${env.KUBECONFIG} apply -f ${helmManifest}")
 }
 def createHelmTemplate() {
-    sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP_VERSION=${env.IMAGE_VERSION} > helm_manifest.yaml")
+    sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP.APP_VERSION=${env.IMAGE_VERSION} > helm_manifest.yaml")
 }
 def createHelmTemplateWithParameters() {
-    sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP_VERSION=${env.IMAGE_VERSION},${env.CUSTOM_PARAMETERS} > helm_manifest.yaml")
+    sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP.APP_VERSION=${env.IMAGE_VERSION},${env.CUSTOM_PARAMETERS} > helm_manifest.yaml")
 }
 def checkPodStatus(podName) {
     podStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod ${podName} --no-headers|awk '{print \$3}'", returnStdout: true).trim()
@@ -85,6 +85,12 @@ node("docker") {
         if (deploymentRolloutStatus.equals(0)) {
             printLogs()
         } else {
+            try {
+                println("[JENKINS][DEBUG] Try to set privious app version.")
+                sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} rollout undo deployment/${currentDeployment}", returnStdout: true)
+            } catch (Exception e) {
+                println("[JENKINS][DEBUG] latest revision not found. The version will remain the same.")
+            }
             printLogs()
             currentBuild.result = "FAILURE"
         }
