@@ -1,12 +1,12 @@
 def createNamespace(namespace) {
     try {
-        sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} create ns ${namespace}")
+        sh(script: "kubectl create ns ${namespace}")
     } catch(Exception e) {
         println("[JENKINS][DEBUG] namespace " + namespace + " exist")
     }
 }
 def applyManifest(helmManifest) {
-    sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE}  apply -f ${helmManifest}")
+    sh(script: "kubectl -n ${env.NAMESPACE}  apply -f ${helmManifest}")
 }
 def createHelmTemplate() {
     sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP.APP_VERSION=${env.IMAGE_VERSION} > helm_manifest.yaml")
@@ -15,24 +15,24 @@ def createHelmTemplateWithParameters() {
     sh(script: "helm template ${env.GERRIT_PROJECT_NAME}/helm-charts/ --set APP.APP_VERSION=${env.IMAGE_VERSION},${env.CUSTOM_PARAMETERS} > helm_manifest.yaml")
 }
 def checkPodStatus(podName) {
-    podStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod ${podName} --no-headers|awk '{print \$3}'", returnStdout: true).trim()
+    podStatus = sh(script: "kubectl -n ${env.NAMESPACE} get pod ${podName} --no-headers|awk '{print \$3}'", returnStdout: true).trim()
     println("[JENKINS][DEBUG] pod \"${podName}\" current status: ${podStatus}")
-    logs = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} logs ${podName}", returnStdout: true)
+    logs = sh(script: "kubectl -n ${env.NAMESPACE} logs ${podName}", returnStdout: true)
     println("[JENKINS][DEBUG] Pod \"${podName}\" logs:\n${logs}")
 }
 def checkRolloutStatus(deployment) {
-    rolloutStatus = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} rollout status deployment/${deployment} -n ${env.NAMESPACE}", returnStatus: true)
+    rolloutStatus = sh(script: "kubectl rollout status deployment/${deployment} -n ${env.NAMESPACE}", returnStatus: true)
     return rolloutStatus
 }
 def printLogs() {
-    deploingPod = sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} get pod |grep ${env.GERRIT_PROJECT_NAME}|awk '{print \$1}'", returnStdout: true).trim()
+    deploingPod = sh(script: "kubectl -n ${env.NAMESPACE} get pod |grep ${env.GERRIT_PROJECT_NAME}|awk '{print \$1}'", returnStdout: true).trim()
     checkPodStatus("${deploingPod}")
 }
 def prometheusPreDeploy() {
     def reloaderUrl = "https://raw.githubusercontent.com/stakater/Reloader/master/deployments/kubernetes/reloader.yaml"
     def kubeStateMetricsRepo = "https://github.com/kubernetes/kube-state-metrics.git"
     println("[JENKINS][DEBUG] project = " + GERRIT_PROJECT_NAME + ". Will be use extend stage for prometheus")
-    sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} apply -f ${reloaderUrl}", returnStdout: true)
+    sh(script: "kubectl -n ${env.NAMESPACE} apply -f ${reloaderUrl}", returnStdout: true)
     println("[JENLINS][DEBUG] apply kube-state-metrics")
     sh """
        rm -rf kube-state-metrics
@@ -40,11 +40,11 @@ def prometheusPreDeploy() {
     """
     sh(script: "kubectl apply -f kube-state-metrics/examples/standard/", returnStdout: true)
 }
-node("docker") {
+node("docker-slave") {
     def GERRIT_PROJECT_NAME = env.GERRIT_PROJECT_NAME
     def NAMESPACE = env.NAMESPACE
     def GERRIT_URL = env.GERRIT_URL
-    def KUBECONFIG = env.KUBECONFIG
+    //def KUBECONFIG = env.KUBECONFIG
     def IMAGE_VERSION = env.IMAGE_VERSION
     def CUSTOM_PARAMETERS = env.CUSTOM_PARAMETERS
 
@@ -90,7 +90,7 @@ node("docker") {
         } else {
             try {
                 println("[JENKINS][DEBUG] Try to set privious app version.")
-                sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} -n ${env.NAMESPACE} rollout undo deployment/${currentDeployment}", returnStdout: true)
+                sh(script: "kubectl  -n ${env.NAMESPACE} rollout undo deployment/${currentDeployment}", returnStdout: true)
             } catch (Exception e) {
                 println("[JENKINS][DEBUG] latest revision not found. The version will remain the same.")
             }
@@ -99,7 +99,7 @@ node("docker") {
         }
     }
     stage("Label namespace") {
-        sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} label --overwrite ns ${env.NAMESPACE} ${env.GERRIT_PROJECT_NAME}=${env.IMAGE_VERSION}")
+        sh(script: "kubectl  label --overwrite ns ${env.NAMESPACE} ${env.GERRIT_PROJECT_NAME}=${env.IMAGE_VERSION}")
     }
     stage("Clean-up workspace") {
         build job: 'clean-up-workspace', parameters: [string(name: 'GERRIT_PROJECT_NAME', value: env.GERRIT_PROJECT_NAME)]

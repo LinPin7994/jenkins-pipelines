@@ -30,7 +30,7 @@ node("docker") {
                 git config --global user.email 'jenkins'
                 git config --global user.name '${GIT_USERNAME}'
                 rm -rf ${env.GERRIT_PROJECT_NAME}
-                git clone http://${GIT_USERNAME}:${GIT_PASSWORD}@${env.GERRIT_URL}/${env.GERRIT_PROJECT_NAME}
+                git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@${env.GERRIT_URL}/${env.GERRIT_PROJECT_NAME}
                 cd ${env.GERRIT_PROJECT_NAME}
                 git fetch origin ${GERRIT_REFSPEC}
                 git checkout FETCH_HEAD
@@ -51,7 +51,7 @@ node("docker") {
                 break;
             case "pipelines":
                 notify("groovy pipelines")
-                sonarScannerCheck("${WORKSPACE}")
+                //sonarScannerCheck("${WORKSPACE}")
                 break;
             default:
                 notify("other project")
