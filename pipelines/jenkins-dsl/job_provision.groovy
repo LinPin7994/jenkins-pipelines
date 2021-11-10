@@ -4,12 +4,12 @@ import hudson.model.ListView
 import jenkins.model.Jenkins
 
 def pipelinePath = 'pipelines'
-def repositoryUrl = 'https://gerrit.example.com/edp'
+def repositoryUrl = 'https://gerrit.andtree.ru/edp'
 def repositoryCreds = 'jenkinsHTTP'
 def kubeconfig = '/srv/admin.conf'
-def gerritUrl = 'gerrit.example.com'
-def nexusUrl = 'nexus.example.com'
-def sonarUrl = 'https://sonarqube.example.com'
+def gerritUrl = 'gerrit.andtree.ru'
+def nexusUrl = 'nexus.andtree.ru'
+def sonarUrl = 'https://sonarqube.andtree.ru'
 
 def createPipelines(pipelineName, applicationName, pipelineScript, pipelinePath, repositoryUrl, repositoryCreds, gerritUrl, nexusUrl, sonarUrl, kubeconfig) {
     folder("${applicationName}") {

@@ -99,7 +99,9 @@ node("docker") {
         }
     }
     stage("Label namespace") {
-        sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} label --overwrite ns ${env.NAMESPACE} ${env.GERRIT_PROJECT_NAME}=${env.IMAGE_VERSION}")
+        if (currentBuild.result == "SUCCESS") {
+            sh(script: "kubectl --kubeconfig ${env.KUBECONFIG} label --overwrite ns ${env.NAMESPACE} ${env.GERRIT_PROJECT_NAME}=${env.IMAGE_VERSION}")
+        }
     }
     stage("Clean-up workspace") {
         build job: 'clean-up-workspace', parameters: [string(name: 'GERRIT_PROJECT_NAME', value: env.GERRIT_PROJECT_NAME)]

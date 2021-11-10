@@ -1,12 +1,12 @@
 def numberOfBuildsToKeep = 5
 def daysToKeepBuilds = 3
 def pipelinePath = 'pipelines'
-def repositoryUrl = 'https://gerrit.example.com/edp'
+def repositoryUrl = 'https://gerrit.andtree.ru/edp'
 def repositoryCreds = 'jenkinsHTTP'
 def kubeconfig = '/srv/admin.conf'
-def gerritUrl = 'gerrit.example.com'
-def nexusUrl = 'nexus.example.com'
-def sonarUrl = 'https://sonarqube.example.com'
+def gerritUrl = 'gerrit.andtree.ru'
+def nexusUrl = 'nexus.andtree.ru'
+def sonarUrl = 'https://sonarqube.andtree.ru'
 
 pipelineJob("get-and-push-docker-images") {
     description("Get and push external docker images")
@@ -233,6 +233,52 @@ pipelineJob("create-service-account") {
                     }
                     branches("master")
                     scriptPath("${pipelinePath}/create-sa.groovy")
+                }
+            }
+        }
+    }
+}
+pipelineJob("Deploy-mkdocs") {
+    description("Deploy mkdocs site")
+    logRotator {
+        numToKeep(numberOfBuildsToKeep)
+        daysToKeep(daysToKeepBuilds)
+    }
+    parameters {
+        wHideParameterDefinition {
+            name('HOST')
+            defaultValue('192.168.0.150')
+            description('host with web server')
+        }
+        wHideParameterDefinition {
+            name('GERRIT_PROJECT_NAME')
+            defaultValue('docs-andtree-ru')
+            description('repository')
+        }
+        wHideParameterDefinition {
+            name('GERRIT_URL')
+            defaultValue(gerritUrl)
+            description('gerrit internal url')
+        }
+        wHideParameterDefinition {
+            name('WEB_ROOT_DIR')
+            defaultValue('/var/www/html/')
+            description('web server root dir')
+        }
+        triggers {
+            scm("* * * * *")
+        }
+    }
+    definition {
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url(repositoryUrl)
+                        credentials(repositoryCreds)
+                    }
+                    branches("master")
+                    scriptPath("${pipelinePath}/deploy_mkdocs.groovy")
                 }
             }
         }

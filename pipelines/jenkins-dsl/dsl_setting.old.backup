@@ -1,12 +1,12 @@
 def numberOfBuildsToKeep = 5
 def daysToKeepBuilds = 3
 def pipelinePath = 'pipelines'
-def repositoryUrl = 'http://url/repo'
+def repositoryUrl = 'https://gerrit.andtree.ru/edp'
 def repositoryCreds = 'jenkinsHTTP'
 def kubeconfig = '/srv/admin.conf'
-def gerritUrl = 'gerrit.example.com'
-def nexusUrl = 'nexus.example.com'
-def sonarUrl = 'https://sonarqube.example.com'
+def gerritUrl = 'gerrit.andtree.ru'
+def nexusUrl = 'nexus.andtree.ru'
+def sonarUrl = 'https://sonarqube.andtree.ru'
 folder('grafana') {
     description('Grafana pipelines')
 }
